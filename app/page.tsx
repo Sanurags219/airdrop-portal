@@ -18,7 +18,12 @@ import {
   ExternalLink,
   Info,
   Filter,
-  ArrowUpDown
+  ArrowUpDown,
+  Coins,
+  X,
+  Lock,
+  Calendar,
+  AlertCircle
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -105,6 +110,10 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [sortByValue, setSortByValue] = useState<"desc" | "asc" | null>("desc");
 
+  // Staking Modal State
+  const [isStakeModalOpen, setIsStakeModalOpen] = useState(false);
+  const [selectedAirdrop, setSelectedAirdrop] = useState<any>(null);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -127,6 +136,11 @@ export default function Dashboard() {
     
     return list;
   }, [statusFilter, sortByValue]);
+
+  const handleStakeClick = (airdrop: any) => {
+    setSelectedAirdrop(airdrop);
+    setIsStakeModalOpen(true);
+  };
 
   if (!mounted) return null;
 
@@ -352,13 +366,8 @@ export default function Dashboard() {
                         transition={{ duration: 0.2 }}
                       >
                         <AirdropItem 
-                          name={airdrop.name} 
-                          description={airdrop.description} 
-                          status={airdrop.status} 
-                          highlight={airdrop.highlight} 
-                          href={airdrop.href}
-                          estValue={`~$${airdrop.estValue.toFixed(2)}`}
-                          criteria={airdrop.criteria}
+                          airdrop={airdrop}
+                          onStake={handleStakeClick}
                         />
                       </motion.div>
                     ))
@@ -401,6 +410,14 @@ export default function Dashboard() {
             />
           </div>
         </div>
+
+        <StakeModal 
+          isOpen={isStakeModalOpen} 
+          onClose={() => setIsStakeModalOpen(false)} 
+          airdrop={selectedAirdrop}
+          balance={balance?.formatted}
+          symbol={balance?.symbol}
+        />
 
         {/* Footer */}
         <footer className="mt-auto border-t border-slate-800 bg-[#0f172a]/20 p-8 backdrop-blur-sm">
@@ -463,8 +480,9 @@ function StatCard({ label, value, subValue, subColor, suffix }: any) {
   );
 }
 
-function AirdropItem({ name, description, status, highlight = false, href, estValue, criteria }: any) {
+function AirdropItem({ airdrop, onStake }: { airdrop: any, onStake?: (a: any) => void }) {
   const [isHovered, setIsHovered] = useState(false);
+  const { name, description, status, highlight, href, estValue, criteria } = airdrop;
 
   return (
     <div 
@@ -490,7 +508,7 @@ function AirdropItem({ name, description, status, highlight = false, href, estVa
               <div className="space-y-3">
                 <div>
                   <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Estimated Value</p>
-                  <p className="text-lg font-bold text-white text-blue-400">{estValue}</p>
+                  <p className="text-lg font-bold text-white text-blue-400">~${estValue.toFixed(2)}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Criteria</p>
@@ -517,18 +535,23 @@ function AirdropItem({ name, description, status, highlight = false, href, estVa
           status === "Ended" && "opacity-50 grayscale"
         )}
       >
-        <div>
-          <p className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
+        <div className="flex-1 min-w-0 mr-4">
+          <p className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors flex items-center gap-1.5 truncate">
             {name}
           </p>
-          <p className="text-[10px] text-slate-400">{description}</p>
+          <p className="text-[10px] text-slate-400 truncate">{description}</p>
         </div>
         
-        <div className="flex items-center gap-3">
-          <div className="text-right hidden sm:block">
-            <p className="text-[10px] text-slate-500 uppercase font-bold">EST. VALUE</p>
-            <p className="text-xs font-bold text-blue-400">{estValue}</p>
-          </div>
+        <div className="flex items-center gap-2">
+          {status === "Claimable" && (
+            <button 
+              onClick={() => onStake?.(airdrop)}
+              className="px-3 py-1.5 bg-blue-600/20 text-blue-400 border border-blue-500/30 font-bold text-[10px] rounded-lg hover:bg-blue-600/40 transition-all flex items-center gap-1"
+            >
+              <Coins size={10} /> STAKE
+            </button>
+          )}
+
           {href && status !== "Ended" ? (
             <a 
               href={href} 
@@ -536,7 +559,7 @@ function AirdropItem({ name, description, status, highlight = false, href, estVa
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
               className={cn(
-                "px-4 py-1.5 font-bold text-[10px] rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap",
+                "px-3 py-1.5 font-bold text-[10px] rounded-lg transition-all flex items-center gap-1 whitespace-nowrap",
                 highlight 
                   ? "bg-white text-black hover:bg-white/90 shadow-lg" 
                   : "bg-slate-700 text-slate-300 hover:bg-slate-600"
@@ -547,14 +570,178 @@ function AirdropItem({ name, description, status, highlight = false, href, estVa
             </a>
           ) : (
             <div className={cn(
-              "px-4 py-1.5 font-bold text-[10px] rounded-lg whitespace-nowrap",
-              status === "Ended" ? "bg-red-500/10 text-red-400" : "bg-slate-700 text-slate-300"
+              "px-3 py-1.5 font-bold text-[10px] rounded-lg whitespace-nowrap",
+              status === "Ended" ? "bg-red-500/10 text-red-400 text-center" : "bg-slate-700 text-slate-300"
             )}>
               {status.toUpperCase()}
             </div>
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function StakeModal({ isOpen, onClose, airdrop, balance, symbol }: any) {
+  const [amount, setAmount] = useState("");
+  const [duration, setDuration] = useState("30");
+  const [isStaking, setIsStaking] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setAmount("");
+      setDuration("30");
+      setIsStaking(false);
+      setIsSuccess(false);
+    }
+  }, [isOpen]);
+
+  const handleStake = () => {
+    setIsStaking(true);
+    // Simulate staking process
+    setTimeout(() => {
+      setIsStaking(false);
+      setIsSuccess(true);
+      setTimeout(onClose, 2000);
+    }, 1500);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+      />
+      
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        className="bg-[#0f172a] w-full max-w-md rounded-2xl border border-slate-800 shadow-2xl overflow-hidden relative z-10"
+      >
+        {isSuccess ? (
+          <div className="p-12 flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mb-6 animate-bounce">
+              <ShieldCheck size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Stake Successful!</h3>
+            <p className="text-sm text-slate-400">Your assets are now secured in the Base vault.</p>
+          </div>
+        ) : (
+          <>
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Coins size={20} className="text-blue-500" />
+                  Stake Airdrop Rewards
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">Staking for {airdrop?.name}</p>
+              </div>
+              <button 
+                onClick={onClose}
+                className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Asset Box */}
+              <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Asset to Stake</span>
+                  <span className="text-[10px] text-blue-400 font-bold uppercase">Base Network</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <div className="w-5 h-5 bg-white rounded-sm"></div>
+                  </div>
+                  <div>
+                    <p className="text-base font-bold text-white">ETH</p>
+                    <p className="text-xs text-slate-500">Available: {parseFloat(balance || "0").toFixed(4)} {symbol}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Amount Input */}
+              <div>
+                <label className="text-[10px] text-slate-500 uppercase font-bold block mb-2 tracking-widest">Amount to Stake</label>
+                <div className="relative">
+                  <input 
+                    type="number" 
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-[#020617] border border-slate-800 rounded-xl px-4 py-3.5 text-white font-bold focus:outline-none focus:border-blue-600/50 text-xl"
+                  />
+                  <button 
+                    onClick={() => setAmount(balance || "0")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-blue-600/10 text-blue-500 text-[10px] font-bold rounded uppercase hover:bg-blue-600/20 transition-colors"
+                  >
+                    MAX
+                  </button>
+                </div>
+              </div>
+
+              {/* Duration Select */}
+              <div>
+                <label className="text-[10px] text-slate-500 uppercase font-bold block mb-2 tracking-widest">Lock Duration</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: "30 Days", val: "30", yield: "4.2%" },
+                    { label: "90 Days", val: "90", yield: "6.8%" },
+                    { label: "1 Year", val: "365", yield: "12.5%" }
+                  ].map((d) => (
+                    <button
+                      key={d.val}
+                      onClick={() => setDuration(d.val)}
+                      className={cn(
+                        "p-3 rounded-xl border transition-all text-center group",
+                        duration === d.val 
+                          ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20" 
+                          : "bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700"
+                      )}
+                    >
+                      <p className="text-[10px] font-bold uppercase">{d.label}</p>
+                      <p className={cn("text-[10px] mt-1", duration === d.val ? "text-blue-100" : "text-green-500 font-bold")}>{d.yield} APR</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Warning */}
+              <div className="flex gap-3 p-4 bg-yellow-500/5 border border-yellow-500/10 rounded-xl">
+                <AlertCircle className="text-yellow-500 shrink-0" size={16} />
+                <p className="text-[10px] text-yellow-500/80 leading-relaxed italic">
+                  Assets will be locked for the selected duration. Early withdrawal results in a 15% penalty of earned rewards.
+                </p>
+              </div>
+
+              {/* Action */}
+              <button 
+                onClick={handleStake}
+                disabled={!amount || isStaking}
+                className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 group"
+              >
+                {isStaking ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  <>
+                    <Lock size={18} className="group-hover:rotate-12 transition-transform" />
+                    CONFIRM STAKING
+                  </>
+                )}
+              </button>
+            </div>
+          </>
+        )}
+      </motion.div>
     </div>
   );
 }
