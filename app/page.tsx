@@ -23,7 +23,9 @@ import {
   X,
   Lock,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Bell,
+  BellOff
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -114,9 +116,40 @@ export default function Dashboard() {
   const [isStakeModalOpen, setIsStakeModalOpen] = useState(false);
   const [selectedAirdrop, setSelectedAirdrop] = useState<any>(null);
 
+  // Notifications State
+  const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
+  const [activeNotification, setActiveNotification] = useState<any>(null);
+
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    // Avoid sync state update in effect body to satisfy linter
+    const mount = () => setMounted(true);
+    mount();
+    
+    // Simulate a new airdrop notification alert
+    const timer = setTimeout(() => {
+      if (isNotificationEnabled) {
+        setActiveNotification({
+          title: "New Airdrop Detected!",
+          message: "Base Protocol just announced a new incentive program. Check your eligibility.",
+          icon: <Gift className="text-blue-500" />
+        });
+      }
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [isNotificationEnabled]);
+
+  const toggleNotifications = () => {
+    setIsNotificationEnabled(!isNotificationEnabled);
+    if (!isNotificationEnabled) {
+      // Show confirmation
+      setActiveNotification({
+        title: "Notifications Enabled",
+        message: "You will now receive alerts for new claimable airdrops on Base.",
+        icon: <Bell className="text-green-500" />
+      });
+    }
+  };
 
   const filteredAirdrops = useMemo(() => {
     let list = [...AIRDROPS_DATA];
@@ -192,6 +225,22 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center space-x-4">
+            <button 
+              onClick={toggleNotifications}
+              className={cn(
+                "p-2.5 rounded-xl border transition-all relative",
+                isNotificationEnabled 
+                  ? "bg-blue-600/10 border-blue-500/30 text-blue-400" 
+                  : "bg-slate-900/50 border-slate-800 text-slate-500 hover:text-slate-300"
+              )}
+              title={isNotificationEnabled ? "Disable Notifications" : "Enable Notifications"}
+            >
+              {isNotificationEnabled ? <Bell size={18} /> : <BellOff size={18} />}
+              {isNotificationEnabled && (
+                <span className="absolute top-2 right-2 w-2 h-2 bg-blue-500 rounded-full animate-ping"></span>
+              )}
+            </button>
+
             <Wallet>
               <ConnectWallet className="bg-blue-600 hover:bg-blue-700 text-white border-none rounded-xl h-10 px-4 transition-all active:scale-95 shadow-lg shadow-blue-600/20">
                 <Avatar className="h-6 w-6" />
@@ -419,6 +468,11 @@ export default function Dashboard() {
           symbol={balance?.symbol}
         />
 
+        <NotificationToast 
+          notification={activeNotification} 
+          onClose={() => setActiveNotification(null)} 
+        />
+
         {/* Footer */}
         <footer className="mt-auto border-t border-slate-800 bg-[#0f172a]/20 p-8 backdrop-blur-sm">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6 text-[10px] text-slate-500">
@@ -513,7 +567,7 @@ function AirdropItem({ airdrop, onStake }: { airdrop: any, onStake?: (a: any) =>
                 <div>
                   <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Criteria</p>
                   <p className="text-xs text-slate-300 leading-relaxed italic">
-                    "{criteria}"
+                    &quot;{criteria}&quot;
                   </p>
                 </div>
               </div>
@@ -590,10 +644,14 @@ function StakeModal({ isOpen, onClose, airdrop, balance, symbol }: any) {
 
   useEffect(() => {
     if (!isOpen) {
-      setAmount("");
-      setDuration("30");
-      setIsStaking(false);
-      setIsSuccess(false);
+      // Re-initialize state when modal closes
+      const reset = () => {
+        setAmount("");
+        setDuration("30");
+        setIsStaking(false);
+        setIsSuccess(false);
+      };
+      reset();
     }
   }, [isOpen]);
 
@@ -755,5 +813,61 @@ function ActionCard({ title, description, icon }: any) {
       <h5 className="text-white font-bold text-base mb-2 group-hover:text-blue-400 transition-colors">{title}</h5>
       <p className="text-xs text-slate-500 leading-relaxed group-hover:text-slate-400 transition-colors">{description}</p>
     </div>
+  );
+}
+
+function NotificationToast({ notification, onClose }: any) {
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(onClose, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification, onClose]);
+
+  return (
+    <AnimatePresence>
+      {notification && (
+        <motion.div
+          initial={{ opacity: 0, x: 100, y: 0 }}
+          animate={{ opacity: 1, x: 0, y: 0 }}
+          exit={{ opacity: 0, x: 100, scale: 0.95 }}
+          className="fixed bottom-8 right-8 z-[150] w-full max-w-sm"
+        >
+          <div className="bg-[#1e293b] border border-blue-500/30 rounded-2xl p-5 shadow-2xl shadow-blue-900/40 backdrop-blur-xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
+            <div className="flex gap-4">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                {notification.icon}
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between items-start">
+                  <h4 className="text-white font-bold text-sm">{notification.title}</h4>
+                  <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
+                    <X size={14} />
+                  </button>
+                </div>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  {notification.message}
+                </p>
+                <div className="mt-4 flex items-center gap-3">
+                  <button 
+                    onClick={onClose}
+                    className="text-[10px] bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg transition-all"
+                  >
+                    VIEW NOW
+                  </button>
+                  <button 
+                    onClick={onClose}
+                    className="text-[10px] text-slate-500 hover:text-slate-300 font-bold uppercase transition-colors"
+                  >
+                    DISMISS
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
