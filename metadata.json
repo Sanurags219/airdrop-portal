@@ -1,0 +1,6 @@
+{
+  "name": "BasePort",
+  "description": "Airdrop portal and wallet analytics for the Base ecosystem.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
