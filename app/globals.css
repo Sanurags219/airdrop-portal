@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@theme {
+  --color-brand: #3b82f6;
+  --color-sidebar: #0f172a;
+  --color-dashboard-bg: #020617;
+}
+
 :root {
   --background: #020617;
   --foreground: #e2e8f0;
@@ -9,4 +15,5 @@
 body {
   background-color: var(--background);
   color: var(--foreground);
+  font-family: var(--font-sans);
 }

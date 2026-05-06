@@ -28,7 +28,6 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    // Initialize Farcaster SDK
     const init = async () => {
       try {
         await sdk.actions.ready();
