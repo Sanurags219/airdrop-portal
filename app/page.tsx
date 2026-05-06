@@ -16,7 +16,9 @@ import {
   ArrowUpRight,
   Zap,
   ExternalLink,
-  Info
+  Info,
+  Filter,
+  ArrowUpDown
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -27,7 +29,7 @@ import {
   Tooltip as RechartsTooltip, 
   ResponsiveContainer 
 } from "recharts";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 
 const CHART_DATA = [
@@ -44,14 +46,87 @@ const CHART_DATA = [
   { name: "Jun 11", volume: 5200 },
 ];
 
+const AIRDROPS_DATA = [
+  {
+    id: 1,
+    name: "Aerodrome Finance",
+    description: "Incentive Program V2",
+    status: "Claimable",
+    highlight: true,
+    href: "https://aerodrome.finance/airdrop",
+    estValue: 180.00,
+    criteria: "Liquidity provision min $500 or active voting in Epoch 32"
+  },
+  {
+    id: 2,
+    name: "Base Paint NFTs",
+    description: "Genesis Contributor",
+    status: "Info",
+    highlight: false,
+    estValue: 150.00,
+    criteria: "Minted Genesis Day NFT and held for 30+ days"
+  },
+  {
+    id: 3,
+    name: "Debridge Finance",
+    description: "Cross-chain reward",
+    status: "Claimable",
+    highlight: true,
+    href: "https://debridge.foundation/",
+    estValue: 350.00,
+    criteria: "Accumulated 1000+ points through cross-chain transfers to Base"
+  },
+  {
+    id: 4,
+    name: "Warpcast Nodes",
+    description: "Farcaster Ecosystem",
+    status: "Info",
+    highlight: false,
+    estValue: 100.00,
+    criteria: "Active Warpcast channel owner or high engagement hub node host"
+  },
+  {
+    id: 5,
+    name: "Zora Network",
+    description: "L2 Creator Rewards",
+    status: "Ended",
+    highlight: false,
+    estValue: 50.00,
+    criteria: "Deployed 3+ creator collections on Base-Zora bridge"
+  }
+];
+
 export default function Dashboard() {
   const { address, isConnected } = useAccount();
   const { data: balance } = useBalance({ address });
   const [mounted, setMounted] = useState(false);
 
+  // Airdrop filter states
+  const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [sortByValue, setSortByValue] = useState<"desc" | "asc" | null>("desc");
+
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const filteredAirdrops = useMemo(() => {
+    let list = [...AIRDROPS_DATA];
+    
+    // Filter by status
+    if (statusFilter !== "All") {
+      list = list.filter(item => item.status === statusFilter);
+    }
+    
+    // Sort by value
+    if (sortByValue) {
+      list.sort((a, b) => {
+        if (sortByValue === "desc") return b.estValue - a.estValue;
+        return a.estValue - b.estValue;
+      });
+    }
+    
+    return list;
+  }, [statusFilter, sortByValue]);
 
   if (!mounted) return null;
 
@@ -136,7 +211,7 @@ export default function Dashboard() {
             />
             <StatCard 
               label="Active Airdrops" 
-              value="8" 
+              value={AIRDROPS_DATA.filter(a => a.status !== 'Ended').length.toString()} 
               subValue="3 ending this week"
               subColor="text-blue-400"
               suffix="Found"
@@ -230,45 +305,78 @@ export default function Dashboard() {
 
             {/* Active Airdrop Feed */}
             <div className="col-span-12 lg:col-span-4 bg-[#0f172a] rounded-2xl border border-slate-800 p-6 flex flex-col shadow-sm">
-              <h4 className="text-white font-bold mb-6 flex items-center justify-between">
-                Eligible Airdrops
-                <span className="text-[10px] bg-blue-600 px-3 py-1 rounded-full font-bold uppercase tracking-tight animate-pulse">New Rewards</span>
-              </h4>
-              <div className="space-y-4">
-                <AirdropItem 
-                  name="Aerodrome Finance" 
-                  description="Incentive Program V2" 
-                  status="CLAIM" 
-                  highlight 
-                  href="https://aerodrome.finance/airdrop"
-                  estValue="~$180.00"
-                  criteria="Liquidity provision min $500 or active voting in Epoch 32"
-                />
-                <AirdropItem 
-                  name="Base Paint NFTs" 
-                  description="Genesis Contributor" 
-                  status="INFO" 
-                  estValue="~$150.00"
-                  criteria="Minted Genesis Day NFT and held for 30+ days"
-                />
-                <AirdropItem 
-                  name="Debridge Finance" 
-                  description="Cross-chain reward" 
-                  status="CLAIM" 
-                  highlight 
-                  href="https://debridge.foundation/"
-                  estValue="~$350.00"
-                  criteria="Accumulated 1000+ points through cross-chain transfers to Base"
-                />
-                <AirdropItem 
-                  name="Warpcast Nodes" 
-                  description="Farcaster Ecosystem" 
-                  status="INFO" 
-                  estValue="~$100.00"
-                  criteria="Active Warpcast channel owner or high engagement hub node host"
-                />
+              <div className="flex flex-col space-y-4 mb-6">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-white font-bold flex items-center gap-2">
+                    Eligible Airdrops
+                    <span className="text-[10px] bg-blue-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-tight">New</span>
+                  </h4>
+                </div>
+                
+                {/* Filters */}
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1 group">
+                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" size={12} />
+                    <select 
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="w-full bg-slate-900/50 border border-slate-800 rounded-lg pl-8 pr-2 py-1.5 text-[10px] text-slate-300 focus:outline-none focus:border-blue-500/50 appearance-none cursor-pointer"
+                    >
+                      <option value="All">All Statuses</option>
+                      <option value="Claimable">Claimable</option>
+                      <option value="Info">Info Only</option>
+                      <option value="Ended">Ended</option>
+                    </select>
+                  </div>
+                  
+                  <button 
+                    onClick={() => setSortByValue(prev => prev === "desc" ? "asc" : "desc")}
+                    className="flex items-center gap-2 bg-slate-900/50 border border-slate-800 rounded-lg px-3 py-1.5 text-[10px] text-slate-300 hover:border-blue-500/50 transition-all"
+                  >
+                    <ArrowUpDown size={12} className={cn(sortByValue === "asc" ? "text-blue-400" : "text-slate-500")} />
+                    Value {sortByValue === "desc" ? "(High)" : "(Low)"}
+                  </button>
+                </div>
               </div>
-              <button className="mt-8 w-full py-3.5 text-xs text-blue-400 font-bold border border-blue-500/20 rounded-xl hover:bg-blue-500/5 transition-all flex items-center justify-center gap-2 group">
+
+              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                <AnimatePresence mode="popLayout">
+                  {filteredAirdrops.length > 0 ? (
+                    filteredAirdrops.map((airdrop) => (
+                      <motion.div
+                        key={airdrop.id}
+                        layout
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <AirdropItem 
+                          name={airdrop.name} 
+                          description={airdrop.description} 
+                          status={airdrop.status} 
+                          highlight={airdrop.highlight} 
+                          href={airdrop.href}
+                          estValue={`~$${airdrop.estValue.toFixed(2)}`}
+                          criteria={airdrop.criteria}
+                        />
+                      </motion.div>
+                    ))
+                  ) : (
+                    <div className="py-10 text-center">
+                      <p className="text-slate-500 text-xs italic">No airdrops found for this filter.</p>
+                      <button 
+                        onClick={() => { setStatusFilter("All"); setSortByValue("desc"); }}
+                        className="mt-2 text-blue-400 text-[10px] font-bold uppercase underline underline-offset-4"
+                      >
+                        Reset Filters
+                      </button>
+                    </div>
+                  )}
+                </AnimatePresence>
+              </div>
+              
+              <button className="mt-6 w-full py-3 text-xs text-blue-400 font-bold border border-blue-500/20 rounded-xl hover:bg-blue-500/5 transition-all flex items-center justify-center gap-2 group">
                 View All Rewards <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
@@ -405,7 +513,8 @@ function AirdropItem({ name, description, status, highlight = false, href, estVa
         className={cn(
           "p-4 bg-slate-800/40 rounded-xl border border-slate-700/50 flex justify-between items-center transition-all group cursor-help",
           highlight ? "hover:border-white/50" : "hover:border-blue-500/30",
-          isHovered && "bg-slate-800/80 shadow-inner"
+          isHovered && "bg-slate-800/80 shadow-inner",
+          status === "Ended" && "opacity-50 grayscale"
         )}
       >
         <div>
@@ -415,27 +524,36 @@ function AirdropItem({ name, description, status, highlight = false, href, estVa
           <p className="text-[10px] text-slate-400">{description}</p>
         </div>
         
-        {href ? (
-          <a 
-            href={href} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className={cn(
-              "px-4 py-1.5 font-bold text-[10px] rounded-lg transition-all flex items-center gap-1.5",
-              highlight 
-                ? "bg-white text-black hover:bg-white/90 shadow-lg" 
-                : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-            )}
-          >
-            CLAIM NOW
-            <ExternalLink size={10} />
-          </a>
-        ) : (
-          <div className="px-4 py-1.5 bg-slate-700 text-slate-300 font-bold text-[10px] rounded-lg">
-            {status}
+        <div className="flex items-center gap-3">
+          <div className="text-right hidden sm:block">
+            <p className="text-[10px] text-slate-500 uppercase font-bold">EST. VALUE</p>
+            <p className="text-xs font-bold text-blue-400">{estValue}</p>
           </div>
-        )}
+          {href && status !== "Ended" ? (
+            <a 
+              href={href} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className={cn(
+                "px-4 py-1.5 font-bold text-[10px] rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap",
+                highlight 
+                  ? "bg-white text-black hover:bg-white/90 shadow-lg" 
+                  : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+              )}
+            >
+              CLAIM
+              <ExternalLink size={10} />
+            </a>
+          ) : (
+            <div className={cn(
+              "px-4 py-1.5 font-bold text-[10px] rounded-lg whitespace-nowrap",
+              status === "Ended" ? "bg-red-500/10 text-red-400" : "bg-slate-700 text-slate-300"
+            )}>
+              {status.toUpperCase()}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
