@@ -25,7 +25,7 @@ export const metadata: Metadata = {
         action: {
           type: "launch_miniapp",
           name: "BasePort",
-          url: process.env.APP_URL || "https://ais-dev-4466id3hqtjutld7mkspcr-615601803900.asia-southeast1.run.app",
+          url: process.env.APP_URL || "http://localhost:3000",
           splashImageUrl: "https://picsum.photos/seed/baseport-splash/400/400",
           splashBackgroundColor: "#020617",
         },

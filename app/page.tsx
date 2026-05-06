@@ -3,7 +3,7 @@
 import { useAccount, useBalance } from "wagmi";
 import { ConnectWallet, Wallet, WalletDropdown, WalletDropdownDisconnect, WalletDropdownLink } from "@coinbase/onchainkit/wallet";
 import { Avatar, Name, Identity, Address, EthBalance } from "@coinbase/onchainkit/identity";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   History, 
   LayoutDashboard, 
@@ -15,7 +15,8 @@ import {
   CircleDot,
   ArrowUpRight,
   Zap,
-  ExternalLink
+  ExternalLink,
+  Info
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -23,7 +24,7 @@ import {
   XAxis, 
   YAxis, 
   CartesianGrid, 
-  Tooltip, 
+  Tooltip as RechartsTooltip, 
   ResponsiveContainer 
 } from "recharts";
 import { useState, useEffect } from "react";
@@ -204,7 +205,7 @@ export default function Dashboard() {
                       axisLine={false}
                       dx={-10}
                     />
-                    <Tooltip 
+                    <RechartsTooltip 
                       contentStyle={{ backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "12px", fontSize: "12px" }}
                     />
                     <Area 
@@ -240,11 +241,15 @@ export default function Dashboard() {
                   status="CLAIM" 
                   highlight 
                   href="https://aerodrome.finance/airdrop"
+                  estValue="~$180.00"
+                  criteria="Liquidity provision min $500 or active voting in Epoch 32"
                 />
                 <AirdropItem 
                   name="Base Paint NFTs" 
                   description="Genesis Contributor" 
                   status="INFO" 
+                  estValue="~$150.00"
+                  criteria="Minted Genesis Day NFT and held for 30+ days"
                 />
                 <AirdropItem 
                   name="Debridge Finance" 
@@ -252,15 +257,19 @@ export default function Dashboard() {
                   status="CLAIM" 
                   highlight 
                   href="https://debridge.foundation/"
+                  estValue="~$350.00"
+                  criteria="Accumulated 1000+ points through cross-chain transfers to Base"
                 />
                 <AirdropItem 
                   name="Warpcast Nodes" 
                   description="Farcaster Ecosystem" 
                   status="INFO" 
+                  estValue="~$100.00"
+                  criteria="Active Warpcast channel owner or high engagement hub node host"
                 />
               </div>
               <button className="mt-8 w-full py-3.5 text-xs text-blue-400 font-bold border border-blue-500/20 rounded-xl hover:bg-blue-500/5 transition-all flex items-center justify-center gap-2 group">
-                View All 24 Potentials <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                View All Rewards <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
           </div>
@@ -346,43 +355,88 @@ function StatCard({ label, value, subValue, subColor, suffix }: any) {
   );
 }
 
-function AirdropItem({ name, description, status, highlight = false, href }: any) {
-  const content = (
-    <>
-      <div>
-        <p className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
-          {name}
-        </p>
-        <p className="text-[10px] text-slate-400">{description}</p>
-      </div>
-      <div className={cn(
-        "px-4 py-1.5 font-bold text-[10px] rounded-lg transition-all flex items-center gap-1.5",
-        highlight 
-          ? "bg-white text-black hover:bg-white/90 shadow-lg" 
-          : "bg-slate-700 text-slate-300 group-hover:bg-slate-600"
-      )}>
-        {href ? "CLAIM NOW" : status}
-        {href && <ExternalLink size={10} />}
-      </div>
-    </>
-  );
-
-  if (href) {
-    return (
-      <a 
-        href={href} 
-        target="_blank" 
-        rel="noopener noreferrer"
-        className="p-4 bg-slate-800/40 rounded-xl border border-slate-700/50 flex justify-between items-center hover:bg-slate-800/60 hover:border-blue-500/30 transition-all group"
-      >
-        {content}
-      </a>
-    );
-  }
+function AirdropItem({ name, description, status, highlight = false, href, estValue, criteria }: any) {
+  const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <div className="p-4 bg-slate-800/40 rounded-xl border border-slate-700/50 flex justify-between items-center hover:bg-slate-800/60 hover:border-slate-700 transition-all group">
-      {content}
+    <div 
+      className="relative"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <AnimatePresence>
+        {isHovered && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 5, scale: 0.95 }}
+            className="absolute bottom-full left-0 right-0 mb-4 z-[60] pointer-events-none"
+          >
+            <div className="bg-[#1e293b] border border-slate-700 p-4 rounded-xl shadow-2xl shadow-black/50">
+              <div className="flex justify-between items-start mb-3">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reward Details</span>
+                <div className="bg-blue-500/20 text-blue-400 text-[10px] px-2 py-0.5 rounded flex items-center gap-1">
+                  <ExternalLink size={10} /> Verified
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Estimated Value</p>
+                  <p className="text-lg font-bold text-white text-blue-400">{estValue}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Criteria</p>
+                  <p className="text-xs text-slate-300 leading-relaxed italic">
+                    "{criteria}"
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-700/50 flex items-center gap-2 text-[10px] text-blue-400 font-bold">
+                <Info size={12} /> Click to view source details
+              </div>
+              {/* Arrow */}
+              <div className="absolute top-full left-6 w-3 h-3 bg-[#1e293b] border-r border-b border-slate-700 rotate-45 transform -translate-y-1.5" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div 
+        className={cn(
+          "p-4 bg-slate-800/40 rounded-xl border border-slate-700/50 flex justify-between items-center transition-all group cursor-help",
+          highlight ? "hover:border-white/50" : "hover:border-blue-500/30",
+          isHovered && "bg-slate-800/80 shadow-inner"
+        )}
+      >
+        <div>
+          <p className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
+            {name}
+          </p>
+          <p className="text-[10px] text-slate-400">{description}</p>
+        </div>
+        
+        {href ? (
+          <a 
+            href={href} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className={cn(
+              "px-4 py-1.5 font-bold text-[10px] rounded-lg transition-all flex items-center gap-1.5",
+              highlight 
+                ? "bg-white text-black hover:bg-white/90 shadow-lg" 
+                : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+            )}
+          >
+            CLAIM NOW
+            <ExternalLink size={10} />
+          </a>
+        ) : (
+          <div className="px-4 py-1.5 bg-slate-700 text-slate-300 font-bold text-[10px] rounded-lg">
+            {status}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
